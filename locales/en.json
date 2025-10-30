@@ -1,0 +1,15 @@
+{
+    "cl_lang_1" : "Open Cooking",
+    "cl_lang_2" : "Cooking",
+    "cl_lang_3" : "Cooking Item",
+    "cl_lang_4" : "Cooking ",
+    "cl_lang_5" : "Cooking items missing!",
+    "cl_lang_6" : "Not Enough Experience",
+    "cl_lang_7" : " required",
+    "cl_lang_8" : "Missing Items:",
+    "cl_lang_9" : "You need %d more %s (have %d/%d)",
+    "cl_lang_10" : "You need %d %s",
+    "sv_lang_1" : "Item Cooked",
+    "sv_lang_2" : ") cooked a ",
+    "sv_lang_3" : "You have gained %d XP in %s"
+}
