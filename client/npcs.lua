@@ -11,7 +11,7 @@ CreateThread(function()
     for k, v in pairs(Config.CookingLocations) do
         if v.showblip then
             local blip = Citizen.InvokeNative(0x554D9D53F696D002, 1664425300, v.coords.x, v.coords.y, v.coords.z)
-            SetBlipSprite(blip, Config.BlipSprite or -1749618580, true)
+            SetBlipSprite(blip, Config.BlipSprite or `blip_grub`, true)
             Citizen.InvokeNative(0x9CB1A1623062F402, blip, v.name or 'Cooking Location')
             spawnedBlips[k] = blip
         end

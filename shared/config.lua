@@ -11,7 +11,7 @@ Config.EnableTarget = true  -- Enable ox_target for NPCs
 ---------------------------------
 Config.DistanceSpawn = 20.0
 Config.FadeIn = true
-Config.BlipSprite = -1749618580 -- cooking pot icon
+Config.BlipSprite = 935247438 -- blip_grub
 
 ---------------------------------
 -- optimization settings
@@ -27,9 +27,9 @@ Config.CookingLocations = {
     {
         name = 'Valentine Cooking',
         prompt = 'valcooking',
-        coords = vector3(-369.83, 798.21, 116.19),
-        npcmodel = `mp_u_M_M_lom_rhd_smithassistant_01`,
-        npccoords = vector4(-369.83, 798.21, 116.19, 225.12),
+        coords = vec3(-315.41, 812.05, 118.98),
+        npcmodel = `cs_mp_camp_cook`,
+        npccoords = vec4(-315.41, 812.05, 118.98, 281.74),
         showblip = true
     },
 }
