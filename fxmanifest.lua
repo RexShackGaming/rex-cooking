@@ -7,7 +7,8 @@ version '2.0.0'
 
 shared_scripts {
     '@ox_lib/init.lua',
-    'shared/config.lua'
+    'shared/config.lua',
+    'shared/webhook_config.lua'
 }
 
 client_scripts {
@@ -16,6 +17,7 @@ client_scripts {
 }
 
 server_scripts {
+    'server/webhooks.lua',
     'server/server.lua',
     'server/versionchecker.lua'
 }
@@ -37,7 +39,8 @@ exports {
   'GetCookingRecipes',
   'GetCookingCategories',
   'GetRecipeByItem',
-  'GetRecipeIngredients'
+  'GetRecipeIngredients',
+  'GetRecipesByCookingType'
 }
 
 server_exports {

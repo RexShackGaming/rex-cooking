@@ -92,6 +92,11 @@ RSGCore.Functions.CreateCallback('rex-cooking:server:checkingredients', function
     
     -- check job requirement first
     if requiredJob and not CheckPlayerJobRequirement(source, requiredJob) then
+        -- Webhook: Job restriction
+        if SendJobRestrictedWebhook then
+            -- Note: recipeData will need to be passed from client in future
+            SendJobRestrictedWebhook(source, {receive = 'unknown'}, requiredJob)
+        end
         cb({ success = false, missingItems = {}, jobRestricted = true, requiredJob = requiredJob })
         return
     end
@@ -200,8 +205,59 @@ RegisterNetEvent('rex-cooking:server:finishcooking', function(data)
     local xpGain = data.xpreward or 1
     IncreasePlayerXP(src, xpGain, 'cooking')
     
+    -- get current XP for webhooks
+    local currentXP = Player.Functions.GetRep('cooking') or 0
+    
+    -- Webhook: Cooking completed
+    if SendCookingCompletedWebhook then
+        SendCookingCompletedWebhook(src, data)
+    end
+    
+    -- Webhook: XP gained
+    if SendXPGainedWebhook then
+        SendXPGainedWebhook(src, xpGain, currentXP)
+    end
+    
+    -- Webhook: Check for XP milestones
+    if SendXPMilestoneWebhook and WebhookConfig and WebhookConfig.XPMilestones then
+        for _, milestone in ipairs(WebhookConfig.XPMilestones) do
+            if currentXP >= milestone and (currentXP - xpGain) < milestone then
+                SendXPMilestoneWebhook(src, milestone, currentXP)
+            end
+        end
+    end
+    
+    -- Webhook: Check for suspicious XP gains
+    if CheckSuspiciousActivity then
+        CheckSuspiciousActivity(src, xpGain)
+    end
+    
     -- log the cooking event
     TriggerEvent('rsg-log:server:CreateLog', 'cooking', locale('sv_lang_1'), 'green', firstname..' '..lastname..' ('..citizenid..locale('sv_lang_2')..RSGCore.Shared.Items[receive].label)
+end)
+
+---------------------------------------------
+-- webhook event handlers
+---------------------------------------------
+RegisterNetEvent('rex-cooking:server:cookingstarted', function(data)
+    local src = source
+    if SendCookingStartedWebhook then
+        SendCookingStartedWebhook(src, data)
+    end
+end)
+
+RegisterNetEvent('rex-cooking:server:cookingcancelled', function(data)
+    local src = source
+    if SendCookingCancelledWebhook then
+        SendCookingCancelledWebhook(src, data)
+    end
+end)
+
+RegisterNetEvent('rex-cooking:server:cookingfailed', function(data, missingItems)
+    local src = source
+    if SendCookingFailedWebhook then
+        SendCookingFailedWebhook(src, data, missingItems)
+    end
 end)
 
 ---------------------------------------------

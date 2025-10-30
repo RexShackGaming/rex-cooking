@@ -3,6 +3,7 @@ local CategoryMenus = {}
 local MenusRegistered = false
 local isCooking = false
 local playerXP = 0
+local currentCookingType = 'stove' -- default to stove, can be changed by external scripts
 lib.locale()
 
 ---------------------------------------------
@@ -15,7 +16,7 @@ CreateThread(function()
             icon = 'far fa-eye',
             label = locale('cl_lang_17'),
             onSelect = function()
-                TriggerEvent('rex-cooking:client:cookingmenu')
+                TriggerEvent('rex-cooking:client:cookingmenu', { cookingType = 'stove' })
             end,
             distance = 2.0
         }
@@ -124,8 +125,10 @@ CreateThread(function()
     UpdatePlayerXP()
 end)
 
--- filter recipes based on player's job
-local function GetJobFilteredRecipes()
+-- filter recipes based on player's job and cooking type
+local function GetJobFilteredRecipes(cookingType)
+    local filterType = cookingType or currentCookingType
+    
     RSGCore.Functions.TriggerCallback('rex-cooking:server:getplayerjob', function(playerJob)
         -- also get current XP in the callback
         RSGCore.Functions.TriggerCallback('rex-cooking:server:checkxp', function(currentXP)
@@ -142,6 +145,26 @@ local function GetJobFilteredRecipes()
                 -- skip if player doesn't have required XP
                 local requiredXP = v.requiredxp or 0
                 if currentXP < requiredXP then
+                    goto continue
+                end
+                
+                -- skip if recipe doesn't match cooking type
+                local recipeCookingType = v.cookingtype or 'all'
+                
+                -- handle if cookingtype is a table (multiple types)
+                if type(recipeCookingType) == 'table' then
+                    local matchFound = false
+                    for _, cType in ipairs(recipeCookingType) do
+                        if cType == filterType or cType == 'all' then
+                            matchFound = true
+                            break
+                        end
+                    end
+                    if not matchFound then
+                        goto continue
+                    end
+                -- handle if cookingtype is a string (single type)
+                elseif recipeCookingType ~= 'all' and recipeCookingType ~= filterType then
                     goto continue
                 end
             
@@ -202,7 +225,8 @@ local function GetJobFilteredRecipes()
                     xpreward = v.xpreward,
                     receive = v.receive,
                     giveamount = v.giveamount,
-                    requiredjob = v.requiredjob
+                    requiredjob = v.requiredjob,
+                    cookingtype = v.cookingtype
                 }
             }
 
@@ -230,10 +254,19 @@ local function GetJobFilteredRecipes()
             end)
         end
         
-        -- show main menu with XP display
+        -- show main menu with XP display and cooking type
+        local cookingTypeLabel = 'Stove'
+        if filterType == 'campfire' then
+            cookingTypeLabel = 'Campfire'
+        elseif filterType == 'campsite' then
+            cookingTypeLabel = 'Campsite'
+        elseif filterType == 'cookjob' then
+            cookingTypeLabel = 'Job Kitchen'
+        end
+        
         local Menu = {
             id = 'cooking_menu',
-            title = locale('cl_lang_3'),
+            title = locale('cl_lang_3') .. ' (' .. cookingTypeLabel .. ')',
             description = string.format(locale('cl_lang_18'), playerXP),
             options = {}
         }
@@ -265,8 +298,10 @@ local function GetJobFilteredRecipes()
     end)
 end
 
-RegisterNetEvent('rex-cooking:client:cookingmenu', function()
-    GetJobFilteredRecipes()
+RegisterNetEvent('rex-cooking:client:cookingmenu', function(data)
+    local cookingType = data and data.cookingType or 'stove'
+    currentCookingType = cookingType
+    GetJobFilteredRecipes(cookingType)
 end)
 
 ---------------------------------------------
@@ -298,6 +333,9 @@ RegisterNetEvent('rex-cooking:client:cookitem', function(data)
                 elseif result.success == true then
                     isCooking = true
                     LocalPlayer.state:set("inv_busy", true, true) -- lock inventory
+                    
+                    -- Trigger webhook for cooking started
+                    TriggerServerEvent('rex-cooking:server:cookingstarted', data)
                     
                     -- validate item exists before accessing
                     local itemData = RSGCore.Shared.Items[data.receive]
@@ -339,6 +377,9 @@ RegisterNetEvent('rex-cooking:client:cookitem', function(data)
                         Wait(500)
                         UpdatePlayerXP()
                     else
+                        -- Trigger webhook for cooking cancelled
+                        TriggerServerEvent('rex-cooking:server:cookingcancelled', data)
+                        
                         lib.notify({ 
                             title = locale('cl_lang_27'), 
                             description = locale('cl_lang_28'), 
@@ -380,6 +421,9 @@ RegisterNetEvent('rex-cooking:client:cookitem', function(data)
                         })
                     end
                     
+                    -- Trigger webhook for cooking failed
+                    TriggerServerEvent('rex-cooking:server:cookingfailed', data, result.missingItems)
+                    
                     ShowMissingItemsNotification(result.missingItems)
                 end
             end, data.ingredients, data.requiredjob)
@@ -400,8 +444,10 @@ end)
 ---------------------------------------------
 
 -- open cooking menu programmatically
-exports('OpenCookingMenu', function()
-    TriggerEvent('rex-cooking:client:cookingmenu')
+-- @param cookingType string - 'stove', 'campfire', 'campsite', 'cookjob', or nil (defaults to 'stove')
+exports('OpenCookingMenu', function(cookingType)
+    local cookType = cookingType or 'stove'
+    TriggerEvent('rex-cooking:client:cookingmenu', { cookingType = cookType })
 end)
 
 -- check if player is near a cooking location
@@ -487,4 +533,31 @@ exports('GetRecipeIngredients', function(itemName)
     end
     
     return ingredients
+end)
+
+-- get recipes by cooking type
+-- @param cookingType string - 'stove', 'campfire', 'campsite', 'cookjob', or 'all'
+-- @return table - array of recipes that can be cooked with the specified type
+exports('GetRecipesByCookingType', function(cookingType)
+    if not cookingType then return Config.Cooking end
+    
+    local recipes = {}
+    for _, recipe in ipairs(Config.Cooking) do
+        local recipeCookingType = recipe.cookingtype or 'all'
+        
+        -- handle if cookingtype is a table (multiple types)
+        if type(recipeCookingType) == 'table' then
+            for _, cType in ipairs(recipeCookingType) do
+                if cType == 'all' or cType == cookingType then
+                    table.insert(recipes, recipe)
+                    break
+                end
+            end
+        -- handle if cookingtype is a string (single type)
+        elseif recipeCookingType == 'all' or recipeCookingType == cookingType then
+            table.insert(recipes, recipe)
+        end
+    end
+    
+    return recipes
 end)

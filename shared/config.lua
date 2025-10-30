@@ -47,6 +47,17 @@ Config.CookingProps = {
 }
 
 ---------------------------------
+-- cooking types
+---------------------------------
+Config.CookingTypes = {
+    STOVE = 'stove',        -- Cooking at NPC stove locations
+    CAMPFIRE = 'campfire',  -- Cooking at campfire (external script)
+    CAMPSITE = 'campsite',  -- Cooking at campsite (external script)
+    COOKJOB = 'cookjob',    -- Job-specific cooking location (uses requiredjob)
+    ALL = 'all'             -- Can cook at any location
+}
+
+---------------------------------
 -- cooking items
 ---------------------------------
 Config.Cooking = {
@@ -60,6 +71,7 @@ Config.Cooking = {
         requiredxp = 0,      -- XP required to cook this item
         xpreward = 1,        -- XP gained after successful cooking
         requiredjob = nil,   -- nil means no job restriction (anyone can cook)
+        cookingtype = 'all', -- 'stove', 'campfire', 'campsite', 'cookjob', or 'all'
         ingredients = {
             { item = 'raw_fish', amount = 1 },
         },
@@ -75,6 +87,7 @@ Config.Cooking = {
         requiredxp = 0,
         xpreward = 1,
         requiredjob = nil,
+        cookingtype = 'all', -- 'stove', 'campfire', 'campsite', 'cookjob', or 'all'
         ingredients = {
             { item = 'raw_meat', amount = 1 },
         },
@@ -82,7 +95,7 @@ Config.Cooking = {
         giveamount = 1
     },
     ------------------------------------------
-	-- bread recipes
+	-- bread recipes (stove only - requires oven)
     ------------------------------------------
     {
         category = 'Bread',
@@ -90,6 +103,7 @@ Config.Cooking = {
         requiredxp = 0,
         xpreward = 2,
         requiredjob = nil,
+        cookingtype = 'stove', -- 'stove', 'campfire', 'campsite', 'cookjob', or 'all'
         ingredients = {
             { item = 'flour_wheat', amount = 2 },
             { item = 'milk',        amount = 1 },
@@ -98,5 +112,55 @@ Config.Cooking = {
         receive = 'bread_sour',
         giveamount = 2
     },
+    ------------------------------------------
+	-- job-specific recipes (cookjob example)
+    ------------------------------------------
+    -- {
+    --     category = 'Professional',
+    --     cooktime = 30000,
+    --     requiredxp = 50,
+    --     xpreward = 10,
+    --     requiredjob = 'cook',  -- Only 'cook' job can make this
+    --     cookingtype = 'cookjob', -- Only at job-specific cooking locations
+    --     ingredients = {
+    --         { item = 'raw_meat',    amount = 2 },
+    --         { item = 'flour_wheat', amount = 1 },
+    --         { item = 'egg',         amount = 2 },
+    --     },
+    --     receive = 'gourmet_meal',
+    --     giveamount = 1
+    -- },
+    ------------------------------------------
+	-- mixed cooking type examples (multiple types)
+    ------------------------------------------
+    -- You can use a table of cooking types instead of a single string
+    -- This allows recipes to be cooked at multiple specific locations
+    -- {
+    --     category = 'Mixed',
+    --     cooktime = 15000,
+    --     requiredxp = 0,
+    --     xpreward = 3,
+    --     requiredjob = nil,
+    --     cookingtype = {'stove', 'campfire'}, -- Can cook at stoves OR campfires (but not campsites)
+    --     ingredients = {
+    --         { item = 'raw_meat', amount = 1 },
+    --     },
+    --     receive = 'cooked_steak',
+    --     giveamount = 1
+    -- },
+    -- {
+    --     category = 'Mixed',
+    --     cooktime = 20000,
+    --     requiredxp = 25,
+    --     xpreward = 5,
+    --     requiredjob = 'cook',
+    --     cookingtype = {'stove', 'cookjob'}, -- Can cook at regular stoves OR job-specific kitchens
+    --     ingredients = {
+    --         { item = 'raw_fish',    amount = 2 },
+    --         { item = 'flour_wheat', amount = 1 },
+    --     },
+    --     receive = 'fish_pie',
+    --     giveamount = 1
+    -- },
 
 }
