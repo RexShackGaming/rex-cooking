@@ -1,9 +1,26 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
 local CategoryMenus = {}
 local MenusRegistered = false
+local isCooking = false
+local playerXP = 0
 lib.locale()
 
--- add target here
+---------------------------------------------
+-- target cooking props
+---------------------------------------------
+CreateThread(function()
+    exports.ox_target:addModel(Config.CookingProps, {
+        {
+            name = 'cooking_props',
+            icon = 'far fa-eye',
+            label = locale('cl_lang_17'),
+            onSelect = function()
+                TriggerEvent('rex-cooking:client:cookingmenu')
+            end,
+            distance = 2.0
+        }
+    })
+end)
 
 ---------------------------------------------
 -- cookings menu
@@ -94,16 +111,39 @@ CreateThread(function()
     RegisterCategoryMenus()
 end)
 
+-- get player's current cooking XP
+local function UpdatePlayerXP()
+    RSGCore.Functions.TriggerCallback('rex-cooking:server:checkxp', function(currentXP)
+        playerXP = currentXP
+    end, 'cooking')
+end
+
+-- update XP on script start
+CreateThread(function()
+    Wait(1000)
+    UpdatePlayerXP()
+end)
+
 -- filter recipes based on player's job
 local function GetJobFilteredRecipes()
     RSGCore.Functions.TriggerCallback('rex-cooking:server:getplayerjob', function(playerJob)
-        local filteredCategoryMenus = {}
-        
-        for _, v in ipairs(Config.Cooking) do
-            -- skip if recipe requires a job that player doesn't have
-            if v.requiredjob and v.requiredjob ~= playerJob then
-                goto continue
-            end
+        -- also get current XP in the callback
+        RSGCore.Functions.TriggerCallback('rex-cooking:server:checkxp', function(currentXP)
+            playerXP = currentXP
+            
+            local filteredCategoryMenus = {}
+            
+            for _, v in ipairs(Config.Cooking) do
+                -- skip if recipe requires a job that player doesn't have
+                if v.requiredjob and v.requiredjob ~= playerJob then
+                    goto continue
+                end
+                
+                -- skip if player doesn't have required XP
+                local requiredXP = v.requiredxp or 0
+                if currentXP < requiredXP then
+                    goto continue
+                end
             
             local IngredientsMetadata = {}
             
@@ -119,8 +159,33 @@ local function GetJobFilteredRecipes()
             for i, ingredient in ipairs(v.ingredients) do
                 local ingredientItem = RSGCore.Shared.Items[ingredient.item]
                 if ingredientItem then
-                    table.insert(IngredientsMetadata, { label = ingredientItem.label, value = ingredient.amount })
+                    table.insert(IngredientsMetadata, { 
+                        label = ingredientItem.label, 
+                        value = ingredient.amount 
+                    })
                 end
+            end
+            
+            -- add XP information to metadata
+            if v.requiredxp and v.requiredxp > 0 then
+                table.insert(IngredientsMetadata, { 
+                    label = locale('cl_lang_19'), 
+                    value = v.requiredxp 
+                })
+            end
+            
+            if v.xpreward and v.xpreward > 0 then
+                table.insert(IngredientsMetadata, { 
+                    label = locale('cl_lang_20'), 
+                    value = v.xpreward 
+                })
+            end
+            
+            if v.requiredjob then
+                table.insert(IngredientsMetadata, { 
+                    label = locale('cl_lang_21'), 
+                    value = v.requiredjob 
+                })
             end
 
             local option = {
@@ -165,28 +230,38 @@ local function GetJobFilteredRecipes()
             end)
         end
         
-        -- show main menu
+        -- show main menu with XP display
         local Menu = {
             id = 'cooking_menu',
             title = locale('cl_lang_3'),
+            description = string.format(locale('cl_lang_18'), playerXP),
             options = {}
         }
 
+        -- sort categories alphabetically
+        local sortedCategories = {}
         for category, MenuData in pairs(filteredCategoryMenus) do
+            table.insert(sortedCategories, {name = category, data = MenuData})
+        end
+        table.sort(sortedCategories, function(a, b) return a.name < b.name end)
+        
+        for _, cat in ipairs(sortedCategories) do
             table.insert(Menu.options, {
-                title = category,
-                event = 'rex-cooking:client:' .. category,
-                arrow = true
+                title = cat.name,
+                event = 'rex-cooking:client:' .. cat.name,
+                arrow = true,
+                icon = 'fa-solid fa-fire'
             })
         end
 
         if #Menu.options == 0 then
-            lib.notify({ title = 'No Recipes Available', description = 'You don\'t have access to any cooking recipes.', type = 'inform', duration = 5000 })
+            lib.notify({ title = locale('cl_lang_11'), description = locale('cl_lang_12'), type = 'inform', duration = 5000 })
             return
         end
 
-        lib.registerContext(Menu)
-        lib.showContext(Menu.id)
+            lib.registerContext(Menu)
+            lib.showContext(Menu.id)
+        end, 'cooking')
     end)
 end
 
@@ -198,19 +273,30 @@ end)
 -- cook item
 ---------------------------------------------
 RegisterNetEvent('rex-cooking:client:cookitem', function(data)
+    -- prevent multiple cooking at once
+    if isCooking then
+        lib.notify({ 
+            title = locale('cl_lang_25'), 
+            description = locale('cl_lang_26'), 
+            type = 'inform', 
+            duration = 3000 
+        })
+        return
+    end
     RSGCore.Functions.TriggerCallback('rex-cooking:server:checkxp', function(currentXP)
         if currentXP >= (data.requiredxp or 0) then
             -- check cooking items and job requirements
             RSGCore.Functions.TriggerCallback('rex-cooking:server:checkingredients', function(result)
                 if result.jobRestricted then
                     lib.notify({ 
-                        title = 'Job Required', 
-                        description = 'You need to be a ' .. result.requiredJob .. ' to cook this item.', 
+                        title = locale('cl_lang_13'), 
+                        description = string.format(locale('cl_lang_14'), result.requiredJob), 
                         type = 'error', 
                         duration = 7000 
                     })
                     return
                 elseif result.success == true then
+                    isCooking = true
                     LocalPlayer.state:set("inv_busy", true, true) -- lock inventory
                     
                     -- validate item exists before accessing
@@ -222,7 +308,7 @@ RegisterNetEvent('rex-cooking:client:cookitem', function(data)
                     end
                     
                     local success = lib.progressBar({
-                        duration = tonumber(data.crafttime),
+                        duration = tonumber(data.cooktime),
                         position = 'bottom',
                         useWhileDead = false,
                         canCancel = true,
@@ -232,12 +318,36 @@ RegisterNetEvent('rex-cooking:client:cookitem', function(data)
                             mouse = true,
                         },
                         label = locale('cl_lang_4').. itemData.label,
+                        anim = {
+                            dict = 'amb_work@world_human_bartender@serve_player',
+                            clip = 'take_glass_trans_pour_beer_hold'
+                        },
                     })
                     
                     if success then
                         TriggerServerEvent('rex-cooking:server:finishcooking', data)
+                        
+                        -- show success notification
+                        lib.notify({ 
+                            title = locale('cl_lang_23'), 
+                            description = string.format(locale('cl_lang_24'), data.giveamount, itemData.label), 
+                            type = 'success', 
+                            duration = 5000 
+                        })
+                        
+                        -- update XP after cooking
+                        Wait(500)
+                        UpdatePlayerXP()
+                    else
+                        lib.notify({ 
+                            title = locale('cl_lang_27'), 
+                            description = locale('cl_lang_28'), 
+                            type = 'inform', 
+                            duration = 3000 
+                        })
                     end
                     
+                    isCooking = false
                     LocalPlayer.state:set("inv_busy", false, true) -- unlock inventory
                 else
                     -- Show detailed missing items notification
@@ -276,8 +386,8 @@ RegisterNetEvent('rex-cooking:client:cookitem', function(data)
         else
             local requiredXP = data.requiredxp or 0
             lib.notify({ 
-                title = 'Insufficient Experience', 
-                description = 'You need ' .. requiredXP .. ' XP to cook this item. Current XP: ' .. currentXP, 
+                title = locale('cl_lang_15'), 
+                description = string.format(locale('cl_lang_16'), requiredXP, currentXP), 
                 type = 'error', 
                 duration = 7000 
             })

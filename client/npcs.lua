@@ -1,8 +1,22 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
 local spawnedPeds = {}
+local spawnedBlips = {}
 local lastUpdateTime = 0
 local UPDATE_INTERVAL = Config.UpdateInterval or 1000 -- use config value
 local activeFadeCount = 0
+
+-- create blips for cooking locations
+CreateThread(function()
+    Wait(1000)
+    for k, v in pairs(Config.CookingLocations) do
+        if v.showblip then
+            local blip = Citizen.InvokeNative(0x554D9D53F696D002, 1664425300, v.coords.x, v.coords.y, v.coords.z)
+            SetBlipSprite(blip, Config.BlipSprite or -1749618580, true)
+            Citizen.InvokeNative(0x9CB1A1623062F402, blip, v.name or 'Cooking Location')
+            spawnedBlips[k] = blip
+        end
+    end
+end)
 
 CreateThread(function()
     while true do
@@ -108,10 +122,20 @@ end
 ---------------------------------
 AddEventHandler("onResourceStop", function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
+    
+    -- cleanup peds
     for k,v in pairs(spawnedPeds) do
         if v.spawnedPed and DoesEntityExist(v.spawnedPed) then
             DeletePed(v.spawnedPed)
         end
     end
     spawnedPeds = {}
+    
+    -- cleanup blips
+    for k, blip in pairs(spawnedBlips) do
+        if DoesBlipExist(blip) then
+            RemoveBlip(blip)
+        end
+    end
+    spawnedBlips = {}
 end)

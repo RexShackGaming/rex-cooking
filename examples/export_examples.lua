@@ -1,7 +1,7 @@
--- Example script demonstrating rex-crafting exports
--- This file shows how other resources can integrate with rex-crafting
+-- Example script demonstrating rex-cooking exports
+-- This file shows how other resources can integrate with rex-cooking
 
-print("^2=== REX-CRAFTING EXPORTS EXAMPLES ===^7")
+print("^2=== REX-COOKING EXPORTS EXAMPLES ===^7")
 
 -- CLIENT-SIDE EXAMPLES (use in client scripts)
 if IsDuplicityVersion() == false then -- Client-side only
@@ -13,56 +13,56 @@ if IsDuplicityVersion() == false then -- Client-side only
         while true do
             Wait(5000) -- Check every 5 seconds
             
-            local isNear, locationData = exports['rex-crafting']:IsNearCraftingLocation(25.0)
+            local isNear, locationData = exports['rex-cooking']:IsNearCookingLocation(25.0)
             if isNear then
                 print("^2Player is near: " .. locationData.name .. " (Distance: " .. math.floor(locationData.distance) .. "m)^7")
             end
         end
     end)
     
-    -- Example 2: Get all crafting categories
-    local function ShowCraftingInfo()
-        local categories = exports['rex-crafting']:GetCraftingCategories()
-        print("^3Available crafting categories:^7")
+    -- Example 2: Get all cooking categories
+    local function ShowCookingInfo()
+        local categories = exports['rex-cooking']:GetCookingCategories()
+        print("^3Available cooking categories:^7")
         for _, category in ipairs(categories) do
             print("  - " .. category)
             
             -- Get recipes in this category
-            local recipes = exports['rex-crafting']:GetCraftingRecipes(category)
+            local recipes = exports['rex-cooking']:GetCookingRecipes(category)
             for _, recipe in ipairs(recipes) do
                 print("    → " .. recipe.receive .. " (requires " .. #recipe.ingredients .. " ingredients)")
             end
         end
     end
     
-    -- Example 3: Custom command to show crafting info
-    RegisterCommand('craftinginfo', function()
-        ShowCraftingInfo()
+    -- Example 3: Custom command to show cooking info
+    RegisterCommand('cookinginfo', function()
+        ShowCookingInfo()
     end, false)
     
-    -- Example 4: Custom command to open crafting menu anywhere
-    RegisterCommand('craft', function()
-        exports['rex-crafting']:OpenCraftingMenu()
+    -- Example 4: Custom command to open cooking menu anywhere
+    RegisterCommand('cook', function()
+        exports['rex-cooking']:OpenCookingMenu()
     end, false)
     
     -- Example 5: Get recipe details
-    RegisterCommand('recipe', function(source, args)
+    RegisterCommand('cookingrecipe', function(source, args)
         if not args[1] then
             print("^1Usage: /recipe <item_name>^7")
             return
         end
         
         local itemName = args[1]
-        local recipe = exports['rex-crafting']:GetRecipeByItem(itemName)
+        local recipe = exports['rex-cooking']:GetRecipeByItem(itemName)
         
         if recipe then
             print("^2Recipe found for " .. itemName .. ":^7")
             print("  Category: " .. recipe.category)
-            print("  Craft time: " .. recipe.crafttime .. "ms")
+            print("  Cook time: " .. recipe.cooktime .. "ms")
             print("  Required XP: " .. (recipe.requiredxp or 0))
             print("  XP reward: " .. (recipe.xpreward or 0))
             
-            local ingredients = exports['rex-crafting']:GetRecipeIngredients(itemName)
+            local ingredients = exports['rex-cooking']:GetRecipeIngredients(itemName)
             print("  Ingredients:")
             for _, ingredient in ipairs(ingredients) do
                 print("    - " .. ingredient.amount .. "x " .. ingredient.label)

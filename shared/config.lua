@@ -4,14 +4,14 @@ Config = {}
 -- settings
 ---------------------------------
 Config.Image = "rsg-inventory/html/images/"
-Config.Keybind = 'J'
-Config.EnableTarget = true
+Config.EnableTarget = true  -- Enable ox_target for NPCs
 
 ---------------------------------
 -- npc settings
 ---------------------------------
 Config.DistanceSpawn = 20.0
 Config.FadeIn = true
+Config.BlipSprite = -1749618580 -- cooking pot icon
 
 ---------------------------------
 -- optimization settings
@@ -35,35 +35,68 @@ Config.CookingLocations = {
 }
 
 ---------------------------------
+-- cooking props
+---------------------------------
+Config.CookingProps = {
+    `p_stove01x`,
+    `p_stove04x`,
+    `p_stove05x`,
+    `p_stove06x`,
+    `p_stove07x`,
+    `p_stove09x`,
+}
+
+---------------------------------
 -- cooking items
 ---------------------------------
 Config.Cooking = {
+
+    ------------------------------------------
+	-- fish recipes
+    ------------------------------------------
     {
-        category = 'Tools',
-        crafttime = 30000,
+        category = 'Fish',
+        cooktime = 10000,
         requiredxp = 0,      -- XP required to cook this item
-        xpreward = 5,        -- XP gained after successful cooking
+        xpreward = 1,        -- XP gained after successful cooking
         requiredjob = nil,   -- nil means no job restriction (anyone can cook)
         ingredients = {
-            { item = 'coal',      amount = 1 },
-            { item = 'steel_bar', amount = 1 },
-            { item = 'wood',      amount = 1 },
+            { item = 'raw_fish', amount = 1 },
         },
-        receive = 'pickaxe',
+        receive = 'cooked_fish',
         giveamount = 1
     },
+    ------------------------------------------
+	-- meat recipes
+    ------------------------------------------
     {
-        category = 'Blacksmith',
-        crafttime = 45000,
+        category = 'Meat',
+        cooktime = 10000,
         requiredxp = 0,
-        xpreward = 5,
-        requiredjob = 'blacksmith', -- Only jobtype blacksmith can cook this
+        xpreward = 1,
+        requiredjob = nil,
         ingredients = {
-            { item = 'coal',      amount = 1 },
-            { item = 'steel_bar', amount = 1 },
+            { item = 'raw_meat', amount = 1 },
         },
-        receive = 'weapon_melee_knife',
+        receive = 'cooked_meat',
         giveamount = 1
     },
-    -- add more as required
+    ------------------------------------------
+	-- bread recipes
+    ------------------------------------------
+    {
+        category = 'Bread',
+        cooktime = 25000,
+        requiredxp = 0,
+        xpreward = 2,
+        requiredjob = nil,
+        ingredients = {
+            { item = 'flour_wheat', amount = 2 },
+            { item = 'milk',        amount = 1 },
+            { item = 'egg',         amount = 1 },
+        },
+        receive = 'bread_sour',
+        giveamount = 2
+    },
+
 }

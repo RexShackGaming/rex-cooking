@@ -142,8 +142,8 @@ RegisterNetEvent('rex-cooking:server:finishcooking', function(data)
     if data.requiredjob and not CheckPlayerJobRequirement(src, data.requiredjob) then
         print("^1[WARNING] Player " .. src .. " tried to cook an item requiring job '" .. data.requiredjob .. "' but doesn't have the required job^7")
         TriggerClientEvent('ox_lib:notify', src, { 
-            title = 'Job Required', 
-            description = 'You need to be a ' .. data.requiredjob .. ' to cook this item.', 
+            title = locale('sv_lang_4'), 
+            description = string.format(locale('sv_lang_5'), data.requiredjob), 
             type = 'error', 
             duration = 7000 
         })
