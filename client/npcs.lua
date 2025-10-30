@@ -106,7 +106,7 @@ function NearPed(npcmodel, npccoords)
                 icon = 'far fa-eye',
                 label = locale('cl_lang_1'),
                 onSelect = function()
-                    TriggerEvent('rex-cooking:client:cookingmenu', { cookingType = 'stove' })
+                    TriggerEvent('rex-cooking:client:cookingmenu', { cookingType = 'cookjob' })
                 end,
                 distance = 3.0
             }
