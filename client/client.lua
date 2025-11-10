@@ -61,7 +61,7 @@ local function BuildCookingMenus()
                 title = setheader,
                 category = v.category,
                 ingredients = v.ingredients,
-                maketime = v.maketime,
+                cooktime = v.cooktime,
                 requiredxp = v.requiredxp,
                 xpreward = v.xpreward,
                 receive = v.receive,
@@ -124,18 +124,17 @@ CreateThread(function()
     Wait(1000)
     UpdatePlayerXP()
 end)
-
 -- filter recipes based on player's job and cooking type
 local function GetJobFilteredRecipes(cookingType)
     local filterType = cookingType or currentCookingType
     
     RSGCore.Functions.TriggerCallback('rex-cooking:server:getplayerjob', function(playerJob)
-        -- also get current XP in the callback
         RSGCore.Functions.TriggerCallback('rex-cooking:server:checkxp', function(currentXP)
             playerXP = currentXP
             
             local filteredCategoryMenus = {}
             
+            -- Build all filtered category menus first
             for _, v in ipairs(Config.Cooking) do
                 -- skip if recipe requires a job that player doesn't have
                 if v.requiredjob and v.requiredjob ~= playerJob then
@@ -167,130 +166,131 @@ local function GetJobFilteredRecipes(cookingType)
                 elseif recipeCookingType ~= 'all' and recipeCookingType ~= filterType then
                     goto continue
                 end
-            
-            local IngredientsMetadata = {}
-            
-            -- Validate item exists before accessing
-            local receivedItem = RSGCore.Shared.Items[tostring(v.receive)]
-            if not receivedItem then
-                goto continue
-            end
-            
-            local setheader = receivedItem.label
-            local itemimg = "nui://"..Config.Image..receivedItem.image
+                
+                local IngredientsMetadata = {}
+                
+                -- Validate item exists before accessing
+                local receivedItem = RSGCore.Shared.Items[tostring(v.receive)]
+                if not receivedItem then
+                    goto continue
+                end
+                
+                local setheader = receivedItem.label
+                local itemimg = "nui://"..Config.Image..receivedItem.image
 
-            for i, ingredient in ipairs(v.ingredients) do
-                local ingredientItem = RSGCore.Shared.Items[ingredient.item]
-                if ingredientItem then
+                for i, ingredient in ipairs(v.ingredients) do
+                    local ingredientItem = RSGCore.Shared.Items[ingredient.item]
+                    if ingredientItem then
+                        table.insert(IngredientsMetadata, { 
+                            label = ingredientItem.label, 
+                            value = ingredient.amount 
+                        })
+                    end
+                end
+                
+                -- add XP information to metadata
+                if v.requiredxp and v.requiredxp > 0 then
                     table.insert(IngredientsMetadata, { 
-                        label = ingredientItem.label, 
-                        value = ingredient.amount 
+                        label = locale('cl_lang_19'), 
+                        value = v.requiredxp 
                     })
                 end
+                
+                if v.xpreward and v.xpreward > 0 then
+                    table.insert(IngredientsMetadata, { 
+                        label = locale('cl_lang_20'), 
+                        value = v.xpreward 
+                    })
+                end
+                
+                if v.requiredjob then
+                    table.insert(IngredientsMetadata, { 
+                        label = locale('cl_lang_21'), 
+                        value = v.requiredjob 
+                    })
+                end
+
+                local option = {
+                    title = setheader,
+                    icon = itemimg,
+                    event = 'rex-cooking:client:cookitem',
+                    metadata = IngredientsMetadata,
+                    args = {
+                        title = setheader,
+                        category = v.category,
+                        ingredients = v.ingredients,
+                        cooktime = v.cooktime,
+                        requiredxp = v.requiredxp,
+                        xpreward = v.xpreward,
+                        receive = v.receive,
+                        giveamount = v.giveamount,
+                        requiredjob = v.requiredjob,
+                        cookingtype = v.cookingtype
+                    }
+                }
+
+                -- Properly accumulate recipes in their categories
+                if not filteredCategoryMenus[v.category] then
+                    filteredCategoryMenus[v.category] = {
+                        id = 'cooking_menu_' .. v.category,
+                        title = v.category,
+                        menu = 'cooking_menu',
+                        onBack = function() end,
+                        options = { option }
+                    }
+                else
+                    table.insert(filteredCategoryMenus[v.category].options, option)
+                end
+                
+                ::continue::
             end
             
-            -- add XP information to metadata
-            if v.requiredxp and v.requiredxp > 0 then
-                table.insert(IngredientsMetadata, { 
-                    label = locale('cl_lang_19'), 
-                    value = v.requiredxp 
-                })
-            end
-            
-            if v.xpreward and v.xpreward > 0 then
-                table.insert(IngredientsMetadata, { 
-                    label = locale('cl_lang_20'), 
-                    value = v.xpreward 
-                })
-            end
-            
-            if v.requiredjob then
-                table.insert(IngredientsMetadata, { 
-                    label = locale('cl_lang_21'), 
-                    value = v.requiredjob 
-                })
+            -- Register filtered category menus once after all recipes are processed
+            for category, MenuData in pairs(filteredCategoryMenus) do
+                RegisterNetEvent('rex-cooking:client:' .. category)
+                AddEventHandler('rex-cooking:client:' .. category, function()
+                    lib.registerContext(MenuData)
+                    lib.showContext(MenuData.id)
+                end)
             end
 
-            local option = {
-                title = setheader,
-                icon = itemimg,
-                event = 'rex-cooking:client:cookitem',
-                metadata = IngredientsMetadata,
-                args = {
-                    title = setheader,
-                    category = v.category,
-                    ingredients = v.ingredients,
-                    cooktime = v.cooktime,
-                    requiredxp = v.requiredxp,
-                    xpreward = v.xpreward,
-                    receive = v.receive,
-                    giveamount = v.giveamount,
-                    requiredjob = v.requiredjob,
-                    cookingtype = v.cookingtype
-                }
+            -- show main menu with XP display and cooking type
+            local cookingTypeLabel = 'Stove'
+            if filterType == 'campfire' then
+                cookingTypeLabel = 'Campfire'
+            elseif filterType == 'campsite' then
+                cookingTypeLabel = 'Campsite'
+            elseif filterType == 'cookjob' then
+                cookingTypeLabel = 'Job Kitchen'
+            end
+
+            local Menu = {
+                id = 'cooking_menu',
+                title = locale('cl_lang_3') .. ' (' .. cookingTypeLabel .. ')',
+                description = string.format(locale('cl_lang_18'), playerXP),
+                options = {}
             }
 
-            if not filteredCategoryMenus[v.category] then
-                filteredCategoryMenus[v.category] = {
-                    id = 'cooking_menu_' .. v.category,
-                    title = v.category,
-                    menu = 'cooking_menu',
-                    onBack = function() end,
-                    options = { option }
-                }
-            else
-                table.insert(filteredCategoryMenus[v.category].options, option)
+            -- sort categories alphabetically
+            local sortedCategories = {}
+            for category, MenuData in pairs(filteredCategoryMenus) do
+                table.insert(sortedCategories, {name = category, data = MenuData})
             end
+            table.sort(sortedCategories, function(a, b) return a.name < b.name end)
             
-            ::continue::
-        end
-        
-        -- register filtered menus
-        for category, MenuData in pairs(filteredCategoryMenus) do
-            RegisterNetEvent('rex-cooking:client:' .. category)
-            AddEventHandler('rex-cooking:client:' .. category, function()
-                lib.registerContext(MenuData)
-                lib.showContext(MenuData.id)
-            end)
-        end
-        
-        -- show main menu with XP display and cooking type
-        local cookingTypeLabel = 'Stove'
-        if filterType == 'campfire' then
-            cookingTypeLabel = 'Campfire'
-        elseif filterType == 'campsite' then
-            cookingTypeLabel = 'Campsite'
-        elseif filterType == 'cookjob' then
-            cookingTypeLabel = 'Job Kitchen'
-        end
-        
-        local Menu = {
-            id = 'cooking_menu',
-            title = locale('cl_lang_3') .. ' (' .. cookingTypeLabel .. ')',
-            description = string.format(locale('cl_lang_18'), playerXP),
-            options = {}
-        }
+            for _, cat in ipairs(sortedCategories) do
+                table.insert(Menu.options, {
+                    title = cat.name,
+                    event = 'rex-cooking:client:' .. cat.name,
+                    arrow = true,
+                    icon = 'fa-solid fa-fire'
+                })
+            end
 
-        -- sort categories alphabetically
-        local sortedCategories = {}
-        for category, MenuData in pairs(filteredCategoryMenus) do
-            table.insert(sortedCategories, {name = category, data = MenuData})
-        end
-        table.sort(sortedCategories, function(a, b) return a.name < b.name end)
-        
-        for _, cat in ipairs(sortedCategories) do
-            table.insert(Menu.options, {
-                title = cat.name,
-                event = 'rex-cooking:client:' .. cat.name,
-                arrow = true,
-                icon = 'fa-solid fa-fire'
-            })
-        end
-
-        if #Menu.options == 0 then
-            lib.notify({ title = locale('cl_lang_11'), description = locale('cl_lang_12'), type = 'inform', duration = 5000 })
-            return
-        end
+            if #Menu.options == 0 then
+                lib.notify({ title = locale('cl_lang_11'), description = locale('cl_lang_12'), type = 'inform', duration = 5000 })
+                return
+            end
 
             lib.registerContext(Menu)
             lib.showContext(Menu.id)

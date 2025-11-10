@@ -104,6 +104,7 @@ end
 -- format time
 ---------------------------------
 local function FormatTime(ms)
+    if not ms then return 'N/A' end
     local seconds = math.floor(ms / 1000)
     if seconds < 60 then
         return seconds .. ' seconds'

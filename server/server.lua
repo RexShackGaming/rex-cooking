@@ -25,10 +25,8 @@ local function IncreasePlayerXP(source, xpGain, xpType)
     local Player = RSGCore.Functions.GetPlayer(source)
     if not Player then return false end
     
-    -- Use SetRep instead of AddRep to avoid double addition
-    local currentXP = Player.Functions.GetRep(xpType) or 0
-    local newXP = currentXP + xpGain
-    Player.Functions.AddRep(xpType, newXP)
+    -- Add XP incrementally
+    Player.Functions.AddRep(xpType, xpGain)
     
     TriggerClientEvent('ox_lib:notify', source, { 
         title = string.format(locale('sv_lang_3'), xpGain, xpType), 

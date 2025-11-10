@@ -3,7 +3,7 @@ WebhookConfig = {}
 ---------------------------------
 -- webhook settings
 ---------------------------------
-WebhookConfig.Enabled = false -- Set to true to enable webhooks
+WebhookConfig.Enabled = true -- Set to true to enable webhooks
 WebhookConfig.WebhookURL = '' -- Your Discord webhook URL
 
 ---------------------------------
